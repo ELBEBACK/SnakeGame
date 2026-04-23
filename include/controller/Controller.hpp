@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Model.hpp"
-#include "TextVisual.hpp"
+#include "model/Model.hpp"
+#include "view/TextVisual.hpp"
 #include <random>
 
 class Controller {

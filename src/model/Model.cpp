@@ -1,4 +1,4 @@
-#include "Model.hpp"
+#include "model/Model.hpp"
 
 #include <queue>
 #include <unordered_set>

@@ -1,4 +1,4 @@
-#include "TextVisual.hpp"
+#include "view/TextVisual.hpp"
 
 #include <iostream>
 #include <atomic>

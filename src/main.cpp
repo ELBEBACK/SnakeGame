@@ -1,6 +1,6 @@
-#include "Model.hpp"
-#include "TextVisual.hpp"
-#include "Controller.hpp"
+#include "model/Model.hpp"
+#include "view/TextVisual.hpp"
+#include "controller/Controller.hpp"
 
 #include <csignal>
 #include <cstdlib>
@@ -21,11 +21,14 @@ static void print_usage(const char* name) {
 
 
 static void print_manual() {
-    std::cerr << "How to play: \n"
-              << " P1 uses \"W\" \"A\" SD to\n"
-              << "  -u / --human  N   human players (max 2, default 1)\n"
-              << "  -s / --smart  N   smart bots    (default 1)\n"
-              << "  -l / --silly  N   silly bots    (default 1)\n";
+    std::cerr << "\nC O N T R O L S : \n\n"
+              << "  [ W ] or [ ↑ ] : Move UP\n"
+              << "  [ A ] or [ ← ] : Move LEFT)\n"
+              << "  [ S ] or [ ↓ ] : Move DOWN\n"
+              << "  [ D ] or [ → ] : Move RIGHT\n\n"
+              << "  [ P ]          : Pause\n"
+              << "  [ P ] x2       : Unpause\n"
+              << "  [ Q ]          : Quit Game\n\n";
 }
 
 

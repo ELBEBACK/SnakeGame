@@ -3,7 +3,7 @@
 #include <termios.h>
 #include <string>
 
-#include "View.hpp"
+#include "view/View.hpp"
 
 
 

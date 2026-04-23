@@ -6,8 +6,8 @@
 #include <optional>
 #include <chrono>
 
-#include "Snake.hpp"
-#include "Gecko.hpp"
+#include "model/Snake.hpp"
+#include "model/Gecko.hpp"
 
 
 
