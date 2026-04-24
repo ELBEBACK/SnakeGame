@@ -147,7 +147,7 @@ Direction Model::bfsSmartBot(const Snake& snake) const {
     CellPoint      head_cp = {head.x, head.y};
 
     std::queue<CellPoint>                                    bfs_queue;
-    std::unordered_map<CellPoint, CellPoint, CellPointHash> parents;
+    std::unordered_map<CellPoint, CellPoint, CellPointHash>  parents;
     std::unordered_set<CellPoint, CellPointHash>             visited;
 
     bfs_queue.push(head_cp);

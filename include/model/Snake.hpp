@@ -10,10 +10,22 @@ enum class SnakeStatus  { ALIVE, DEAD, ROTTED };
 enum class ControlledBy { HUMAN, SMART_BOT, SILLY_BOT };
 
 
+inline Direction opposite(Direction d) {
+    switch (d) {
+        case Direction::UP:    return Direction::DOWN;
+        case Direction::DOWN:  return Direction::UP;
+        case Direction::LEFT:  return Direction::RIGHT;
+        case Direction::RIGHT: return Direction::LEFT;
+    }
+    return Direction::RIGHT;
+}
+
 
 struct Segment {
     int         x, y;
     SegmentType type;
+    Direction   direction_head{Direction::RIGHT};
+    Direction   direction_tail{Direction::LEFT};
 
     Segment(int x, int y, SegmentType t = SegmentType::BODY) : x(x), y(y), type(t) {}
     Segment() : x(0), y(0), type(SegmentType::BODY) {}
@@ -30,6 +42,7 @@ class Snake {
     int                color_;
     Segment            rudimentary_tail_{};  
     bool               should_grow_{false};
+    
 public:
     Snake(ControlledBy ctrl, std::list<Segment> body, Direction dir, int color)
         : ctrl_(ctrl), body_(std::move(body)), direction_(dir), color_(color) {}
@@ -78,4 +91,7 @@ public:
 
     bool isHuman() const noexcept { return ctrl_ == ControlledBy::HUMAN; }
     bool isBot()   const noexcept { return ctrl_ != ControlledBy::HUMAN; }
+
+private:
+    void rebuild_directions();
 };

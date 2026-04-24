@@ -65,7 +65,7 @@ class Model {
     int                 next_id_{0};
 
     std::list<Snake>    snakes_;
-    std::list<Gecko>   geckos_;
+    std::list<Gecko>    geckos_;
     std::vector<int>    human_ids_;        
 
     

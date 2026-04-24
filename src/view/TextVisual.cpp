@@ -29,10 +29,20 @@ namespace {
     constexpr int kBrightMagenta    = 95;
     constexpr int kBrightCyan       = 96;
     constexpr int kBrightWhite      = 97;
+
+    constexpr int kBGBlack          = 40;
+    constexpr int kBGRed            = 41;
+    constexpr int kBGGreen          = 42;
+    constexpr int kBGYellow         = 43;
+    constexpr int kBGBlue           = 44;
+    constexpr int kBGMagenta        = 45;
+    constexpr int kBGCyan           = 46;
+    constexpr int kBGWhite          = 47;
 }
 
 constexpr int BORDER_COLOR          = kBrightGreen;
 constexpr int BORDER_TXT_COLOR      = kBrightMagenta;
+constexpr int BORDER_TXT_BG_COLOR   = kBGGreen;
 constexpr int GECKO_COLOR           = kBrightMagenta;
 
 constexpr const char* GECKO = "♥";
@@ -141,16 +151,43 @@ void TextVisual::drawBorder(const Model& model) {
     buf_ += "╝";
 
     const std::string title = " SNAKES ";
-    int title_x = bx + (field_w / 2) - static_cast<int>(title.size() / 2) + 1;
+    int title_x = bx + (field_w / 2) - static_cast<int>(title.size() / 2);
     gotoxy(title_x, by);
     setColor(BORDER_COLOR);
     buf_ += "╣";
+    
     setColor(BORDER_TXT_COLOR);
+    setColor(BORDER_TXT_BG_COLOR);
     buf_ += title;
+    resetColor();
+
     setColor(BORDER_COLOR);
     buf_ += "╠";
 
     resetColor();
+}
+
+
+static std::string_view bodyChar(const Segment& seg) {
+    bool straight = (seg.direction_head == opposite(seg.direction_tail));
+
+    if (straight) {
+        bool horizontal = seg.direction_head == Direction::LEFT
+                       || seg.direction_head == Direction::RIGHT;
+        return horizontal ? "═" : "║";
+    }
+
+    auto connects = [&](Direction a, Direction b) {
+        return (seg.direction_head == a && seg.direction_tail == b)
+            || (seg.direction_head == b && seg.direction_tail == a);
+    };
+
+    if (connects(Direction::RIGHT, Direction::DOWN)) return "╔";
+    if (connects(Direction::LEFT,  Direction::DOWN)) return "╗";
+    if (connects(Direction::RIGHT, Direction::UP))   return "╚";
+    if (connects(Direction::LEFT,  Direction::UP))   return "╝";
+
+    return "o";
 }
 
 void TextVisual::drawSnake(const Snake& snake) {
@@ -160,13 +197,13 @@ void TextVisual::drawSnake(const Snake& snake) {
     setColor(snake.getColor());
 
     auto it = body.begin();
-    char head_char;
+    std::string_view head_char;
     switch (snake.getDirection()) {
-        case Direction::UP:    head_char = '^'; break;
-        case Direction::DOWN:  head_char = 'v'; break;
-        case Direction::LEFT:  head_char = '<'; break;
-        case Direction::RIGHT: head_char = '>'; break;
-        default:               head_char = 'O'; break;
+        case Direction::UP:    head_char = "▲"; break;
+        case Direction::DOWN:  head_char = "▼"; break;
+        case Direction::LEFT:  head_char = "◄"; break;
+        case Direction::RIGHT: head_char = "►"; break;
+        default:               head_char = "O"; break;
     }
     gotoxy(it->x, it->y);
     buf_ += head_char;
@@ -174,7 +211,7 @@ void TextVisual::drawSnake(const Snake& snake) {
 
     for (; it != body.end(); ++it) {
         gotoxy(it->x, it->y);
-        buf_ += 'o';
+        buf_ += bodyChar(*it);
     }
 
     resetColor();
@@ -196,6 +233,7 @@ void TextVisual::drawScore(const Model& model) {
     buf_ += "╣ ";
     setColor(BORDER_TXT_COLOR);
     buf_ += "Snakes: ";
+
     for (const auto& snake : model.getSnakes()) {
         setColor(snake.getColor());
         buf_ += "#" + std::to_string(snake.getID())
@@ -204,7 +242,7 @@ void TextVisual::drawScore(const Model& model) {
 
     setColor(BORDER_COLOR);
     buf_ += "╠";
-    for (int i = 0; i < 10; i++) buf_ += "═";
+    for (int i = 0; i < 19; i++) buf_ += "═";
 
     resetColor();
 }
