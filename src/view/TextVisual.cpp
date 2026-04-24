@@ -224,6 +224,13 @@ void TextVisual::drawGecko(const Gecko& gecko) {
     resetColor();
 }
 
+void TextVisual::drawDroppedHead(const DroppedHead& dh) {
+    setColor(dh.color);
+    gotoxy(dh.x, dh.y);
+    buf_ += "◎";
+    resetColor();
+}
+
 void TextVisual::drawScore(const Model& model) {
     int y = model.getHeight() - model.getRowBorder() + 1;
     int x = model.getColBorder() + 1;
@@ -271,6 +278,7 @@ void TextVisual::render(Model& model) {
 
     clearField(model);
 
+    for (const auto& dh : model.getDroppedHeads()) drawDroppedHead(dh);
     for (const auto& gecko : model.getGeckos()) drawGecko(gecko);
     for (const auto& snake : model.getSnakes()) {
         if (snake.getState() == SnakeStatus::ALIVE) drawSnake(snake);

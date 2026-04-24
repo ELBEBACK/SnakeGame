@@ -122,6 +122,19 @@ void GraphicVisual::drawSnakes(const Model& model) {
     }
 }
  
+void GraphicVisual::drawDroppedHeads(const Model& model) {
+    sf::RectangleShape shape;
+    shape.setOutlineThickness(2.f);
+    for (const auto& dh : model.getDroppedHeads()) {
+        auto r = cellRect(dh.x, dh.y);
+        shape.setSize(r.size);
+        shape.setPosition(r.position);
+        shape.setFillColor(sf::Color::Transparent);
+        shape.setOutlineColor(ansiToColor(dh.color));
+        window_.draw(shape);
+    }
+}
+
 void GraphicVisual::drawScore(const Model& model) {
  
     float x = static_cast<float>(model.getColBorder() * cell_);
@@ -192,6 +205,7 @@ void GraphicVisual::render(Model& model) {
  
     drawBackground();
     drawBorder(model);
+    drawDroppedHeads(model);
     drawGeckos(model);
     drawSnakes(model);
     drawScore(model);

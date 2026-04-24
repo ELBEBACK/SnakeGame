@@ -6,8 +6,6 @@
 #include <climits>
 #include <random>
 
-
-
 void Model::rebuild_cells() {
     cells_.clear();
     for (const auto& snake : snakes_) {
@@ -19,21 +17,22 @@ void Model::rebuild_cells() {
     for (const auto& gecko : geckos_) {
         cells_[{gecko.getX(), gecko.getY()}] = CellType::GECKO;
     }
+    for (const auto& pg : phantom_geckos_) {
+        cells_[{pg.x, pg.y}] = CellType::GECKO;
+    }
+    for (const auto& dh : dropped_heads_) {
+        cells_[{dh.x, dh.y}] = CellType::GECKO;
+    }
 }
-
 
 CellType Model::getCell(int x, int y) const {
     auto it = cells_.find({x, y});
     return (it != cells_.end()) ? it->second : CellType::EMPTY;
 }
 
-
-
 void Model::addSnake(Snake snake) {
     snake.setID(next_id_++);
-    if (snake.isHuman()) {
-        human_ids_.push_back(snake.getID());
-    }
+    if (snake.isHuman()) human_ids_.push_back(snake.getID());
     snakes_.push_back(std::move(snake));
 }
 
@@ -61,7 +60,7 @@ bool Model::checkSnakeCollision(const Snake& snake) const {
     for (const auto& other : snakes_) {
         if (other.getState() != SnakeStatus::ALIVE) continue;
         auto it = (&other == &snake)
-                  ? std::next(other.getBody().begin())  
+                  ? std::next(other.getBody().begin())
                   : other.getBody().begin();
         for (; it != other.getBody().end(); ++it) {
             if (it->x == head.x && it->y == head.y) return true;
@@ -72,14 +71,84 @@ bool Model::checkSnakeCollision(const Snake& snake) const {
 
 void Model::handleGeckoCollision(Snake& snake) {
     const Segment& head = snake.getHead();
-    auto it = geckos_.begin();
-    while (it != geckos_.end()) {
-        if (it->getX() == head.x && it->getY() == head.y) {
-            it = geckos_.erase(it);
+    geckos_.remove_if([&](const Gecko& g) {
+        if (g.getX() == head.x && g.getY() == head.y) {
             snake.grow();
-        } else {
-            ++it;
+            return true;
         }
+        return false;
+    });
+}
+
+void Model::handleDroppedHeadCollisions() {
+    for (auto& snake : snakes_) {
+        if (snake.getState() != SnakeStatus::ALIVE) continue;
+        const Segment& head = *std::next(snake.getBody().begin(), 1);
+
+        dropped_heads_.remove_if([&](const DroppedHead& dh) {
+            if (dh.x != head.x || dh.y != head.y) return false;
+
+            if (dh.respawn_id == snake.getID()) 
+                for (int i = 0; i < dh.original_length / 2; ++i) snake.grow();
+
+            phantom_geckos_.remove_if([&](const PhantomGecko& pg){
+                return pg.head_id == dh.owner_id;
+            });
+            return true;
+        });
+    }
+}
+
+void Model::dropHead(Snake& snake, std::vector<std::pair<int, ControlledBy>>& respawns) {
+    const Segment& head = *std::next(snake.getBody().begin(), 1);
+
+    dropped_heads_.push_back({
+        head.x, head.y,
+        snake.getID(),
+        -1,
+        snake.getColor(),
+        snake.getLength()
+    });
+
+    static const int dx[4] = { 0,  0, -2, 1};
+    static const int dy[4] = {-1,  2,  0, 0};
+    for (int i = 0; i < PHANTOM_COUNT; ++i) {
+        int px = head.x + dx[i];
+        int py = head.y + dy[i];
+        if (px >= minX() && px <= maxX() && py >= minY() && py <= maxY()) {
+            phantom_geckos_.push_back({px, py, snake.getID()});
+        }
+    }
+
+    snake.kill();
+    respawns.push_back({snake.getColor(), snake.getCtrl()});
+}
+
+void Model::respawnSnake(int color, ControlledBy ctrl) {
+    static std::mt19937 rng(
+        static_cast<unsigned>(std::chrono::steady_clock::now().time_since_epoch().count())
+    );
+    std::uniform_int_distribution<int> distX(minX(), maxX());
+    std::uniform_int_distribution<int> distY(minY(), maxY());
+
+    for (int attempt = 0; attempt < 200; ++attempt) {
+        int x = distX(rng), y = distY(rng);
+        if (!isPositionFree(x, y)) continue;
+
+        int new_id = next_id_;
+        addSnake(Snake::Builder()
+            .setControlledBy(ctrl)
+            .setColor(color)
+            .setBody(Segment(x, y, SegmentType::HEAD))
+            .build());
+
+        for (auto& dh : dropped_heads_) {
+            if (dh.color == color && dh.respawn_id == -1) {
+                dh.respawn_id = new_id;
+                break;
+            }
+        }
+        return;
     }
 }
 
@@ -89,10 +158,8 @@ void Model::spawnGecko() {
     );
     std::uniform_int_distribution<int> distX(minX(), maxX());
     std::uniform_int_distribution<int> distY(minY(), maxY());
-
     for (int attempt = 0; attempt < 100; ++attempt) {
-        int x = distX(rng);
-        int y = distY(rng);
+        int x = distX(rng), y = distY(rng);
         if (isPositionFree(x, y)) {
             geckos_.push_back(Gecko(x, y));
             return;
@@ -101,39 +168,35 @@ void Model::spawnGecko() {
 }
 
 void Model::pruneDeadGeckos() {
-    geckos_.remove_if([this](const Gecko& r) {
-        return r.getX() < minX() || r.getX() > maxX() ||
-               r.getY() < minY() || r.getY() > maxY();
+    geckos_.remove_if([this](const Gecko& g) {
+        return g.getX() < minX() || g.getX() > maxX() ||
+               g.getY() < minY() || g.getY() > maxY();
     });
 }
 
 Gecko Model::nearestGecko(const Snake& snake) const {
     const Segment& head = snake.getHead();
-    const Gecko* best  = nullptr;
-    int           best_dist = INT_MAX;
-
-    for (const auto& r : geckos_) {
-        int d = std::abs(r.getX() - head.x) + std::abs(r.getY() - head.y);
-        if (d < best_dist) { best_dist = d; best = &r; }
+    const Gecko*   best = nullptr;
+    int            best_d = INT_MAX;
+    for (const auto& g : geckos_) {
+        int d = std::abs(g.getX() - head.x) + std::abs(g.getY() - head.y);
+        if (d < best_d) { best_d = d; best = &g; }
     }
     return best ? *best : Gecko(-1, -1);
 }
 
 void Model::applyPlayerDirection(int player_idx, Direction dir) {
     if (player_idx < 0 || player_idx >= static_cast<int>(human_ids_.size())) return;
-
     int id = human_ids_[player_idx];
     auto it = std::find_if(snakes_.begin(), snakes_.end(),
                            [id](const Snake& s){ return s.getID() == id; });
-
     if (it == snakes_.end() || it->getState() != SnakeStatus::ALIVE) return;
-
     Direction cur = it->getDirection();
-    bool opposite = (dir == Direction::UP    && cur == Direction::DOWN)  ||
-                    (dir == Direction::DOWN  && cur == Direction::UP)    ||
-                    (dir == Direction::LEFT  && cur == Direction::RIGHT) ||
-                    (dir == Direction::RIGHT && cur == Direction::LEFT);
-    if (!opposite) it->setDirection(dir);
+    bool opp = (dir == Direction::UP    && cur == Direction::DOWN)  ||
+               (dir == Direction::DOWN  && cur == Direction::UP)    ||
+               (dir == Direction::LEFT  && cur == Direction::RIGHT) ||
+               (dir == Direction::RIGHT && cur == Direction::LEFT);
+    if (!opp) it->setDirection(dir);
 }
 
 bool Model::isSafe(int x, int y) const {
@@ -146,9 +209,9 @@ Direction Model::bfsSmartBot(const Snake& snake) const {
     const Segment& head    = snake.getHead();
     CellPoint      head_cp = {head.x, head.y};
 
-    std::queue<CellPoint>                                    bfs_queue;
-    std::unordered_map<CellPoint, CellPoint, CellPointHash>  parents;
-    std::unordered_set<CellPoint, CellPointHash>             visited;
+    std::queue<CellPoint>                                   bfs_queue;
+    std::unordered_map<CellPoint, CellPoint, CellPointHash> parents;
+    std::unordered_set<CellPoint, CellPointHash>            visited;
 
     bfs_queue.push(head_cp);
     visited.insert(head_cp);
@@ -159,12 +222,9 @@ Direction Model::bfsSmartBot(const Snake& snake) const {
         CellPoint cur = bfs_queue.front();
         bfs_queue.pop();
 
-        
         if (getCell(cur.x, cur.y) == CellType::GECKO) {
             CellPoint step = cur;
-            while (!(parents.at(step) == head_cp)) {
-                step = parents.at(step);
-            }
+            while (!(parents.at(step) == head_cp)) step = parents.at(step);
             int dx = step.x - head.x;
             int dy = step.y - head.y;
             if (dx ==  1) return Direction::RIGHT;
@@ -185,26 +245,33 @@ Direction Model::bfsSmartBot(const Snake& snake) const {
             }
         }
     }
-
-    return snake.getDirection();  
+    return snake.getDirection();
 }
 
 Direction Model::greedyEasyBot(const Snake& snake) const {
     const Segment& head    = snake.getHead();
     Direction      cur_dir = snake.getDirection();
-    Direction      desired = cur_dir;
 
     Gecko food = nearestGecko(snake);
-    if (food.getX() != -1) {
-        int fx = food.getX(), fy = food.getY();
+    if (food.getX() == -1) return cur_dir;
+
+    int   fx       = food.getX(), fy = food.getY();
+    bool  prefer_x = (snake.getBotPhase() % 2 == 0);
+    Direction desired = cur_dir;
+
+    if (prefer_x) {
         if      (fx > head.x && cur_dir != Direction::LEFT)  desired = Direction::RIGHT;
         else if (fx < head.x && cur_dir != Direction::RIGHT) desired = Direction::LEFT;
         else if (fy > head.y && cur_dir != Direction::UP)    desired = Direction::DOWN;
         else if (fy < head.y && cur_dir != Direction::DOWN)  desired = Direction::UP;
+    } else {
+        if      (fy > head.y && cur_dir != Direction::UP)    desired = Direction::DOWN;
+        else if (fy < head.y && cur_dir != Direction::DOWN)  desired = Direction::UP;
+        else if (fx > head.x && cur_dir != Direction::LEFT)  desired = Direction::RIGHT;
+        else if (fx < head.x && cur_dir != Direction::RIGHT) desired = Direction::LEFT;
     }
 
-    
-    auto next_pos = [](int hx, int hy, Direction d) -> std::pair<int,int> {
+    auto npos = [](int hx, int hy, Direction d) -> std::pair<int,int> {
         switch (d) {
             case Direction::UP:    return {hx, hy - 1};
             case Direction::DOWN:  return {hx, hy + 1};
@@ -214,10 +281,9 @@ Direction Model::greedyEasyBot(const Snake& snake) const {
         return {hx, hy};
     };
 
-    auto [nx, ny] = next_pos(head.x, head.y, desired);
+    auto [nx, ny] = npos(head.x, head.y, desired);
     if (isSafe(nx, ny)) return desired;
 
-    
     std::vector<Direction> fallbacks = {cur_dir};
     if (cur_dir == Direction::UP || cur_dir == Direction::DOWN) {
         fallbacks.push_back(Direction::LEFT);
@@ -226,28 +292,25 @@ Direction Model::greedyEasyBot(const Snake& snake) const {
         fallbacks.push_back(Direction::UP);
         fallbacks.push_back(Direction::DOWN);
     }
-
     for (Direction d : fallbacks) {
-        auto [fx, fy] = next_pos(head.x, head.y, d);
-        if (isSafe(fx, fy)) return d;
+        auto [bx, by] = npos(head.x, head.y, d);
+        if (isSafe(bx, by)) return d;
     }
-
-    return cur_dir;  
+    return cur_dir;
 }
 
 void Model::tickBots() {
     for (auto& snake : snakes_) {
         if (!snake.isBot() || snake.getState() != SnakeStatus::ALIVE) continue;
-
         Direction dir = (snake.getCtrl() == ControlledBy::SMART_BOT)
                         ? bfsSmartBot(snake)
                         : greedyEasyBot(snake);
         snake.setDirection(dir);
+        snake.incrementBotPhase();
     }
 }
 
 void Model::update(const std::vector<Event>& events) {
-    
     std::optional<Direction> dir1, dir2;
     for (const auto& e : events) {
         switch (e.type) {
@@ -266,41 +329,33 @@ void Model::update(const std::vector<Event>& events) {
     if (dir1) applyPlayerDirection(0, *dir1);
     if (dir2) applyPlayerDirection(1, *dir2);
 
-    
     rebuild_cells();
     tickBots();
-
-    
     pruneDeadGeckos();
 
-    
+    std::vector<std::pair<int, ControlledBy>> respawns;
+
     for (auto& snake : snakes_) {
         if (snake.getState() != SnakeStatus::ALIVE) continue;
-
         snake.move();
-
         if (checkBoundary(snake) || checkSnakeCollision(snake)) {
-            snake.kill();
+            dropHead(snake, respawns);
         } else {
             handleGeckoCollision(snake);
         }
     }
 
-    
-    snakes_.remove_if([](const Snake& s){ return s.getState() == SnakeStatus::ROTTED; });
+    handleDroppedHeadCollisions();
 
-    
+    for (auto& [color, ctrl] : respawns) respawnSnake(color, ctrl);
+
+    snakes_.remove_if([](const Snake& s){ return s.getState() == SnakeStatus::ROTTED; });
     for (auto& snake : snakes_) {
         if (snake.getState() == SnakeStatus::DEAD) snake.rot();
     }
 
-    
-    if (snakes_.empty()) {
-        state_ = ModelState::GAME_OVER;
-        return;
-    }
+    if (snakes_.empty()) { state_ = ModelState::GAME_OVER; return; }
 
-    
     auto now     = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - gecko_timer_).count();
     if (elapsed >= SPAWN_INTERVAL_MS) {
@@ -312,9 +367,11 @@ void Model::update(const std::vector<Event>& events) {
 void Model::reset() {
     snakes_.clear();
     geckos_.clear();
+    dropped_heads_.clear();
+    phantom_geckos_.clear();
     human_ids_.clear();
     cells_.clear();
-    state_ = ModelState::RUNNING;
-    next_id_ = 0;
+    state_       = ModelState::RUNNING;
+    next_id_     = 0;
     gecko_timer_ = std::chrono::steady_clock::now();
 }

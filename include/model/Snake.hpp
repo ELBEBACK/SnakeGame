@@ -42,6 +42,7 @@ class Snake {
     int                color_;
     Segment            rudimentary_tail_{};  
     bool               should_grow_{false};
+    int                bot_phase_{0};
     
 public:
     Snake(ControlledBy ctrl, std::list<Segment> body, Direction dir, int color)
@@ -64,6 +65,8 @@ public:
             body_.push_back(Segment(pos.x, pos.y, SegmentType::HEAD));
             body_.push_back(Segment(pos.x, pos.y, SegmentType::BODY));
             body_.push_back(Segment(pos.x, pos.y, SegmentType::BODY));
+            body_.push_back(Segment(pos.x, pos.y, SegmentType::BODY));
+            body_.push_back(Segment(pos.x, pos.y, SegmentType::BODY));
             return *this;
         }
 
@@ -77,6 +80,7 @@ public:
     void rot()               { state_ = SnakeStatus::ROTTED; }
     void setID(int id)       { id_ = id; }
     void setDirection(Direction d) { direction_ = d; }
+    void incrementBotPhase()     { ++bot_phase_; }
 
     
     int                        getID()        const noexcept { return id_; }
@@ -89,6 +93,7 @@ public:
     Segment                    getTail()      const noexcept { return rudimentary_tail_; }
     ControlledBy               getCtrl()      const noexcept { return ctrl_; }
 
+    int  getBotPhase() const noexcept { return bot_phase_; }
     bool isHuman() const noexcept { return ctrl_ == ControlledBy::HUMAN; }
     bool isBot()   const noexcept { return ctrl_ != ControlledBy::HUMAN; }
 

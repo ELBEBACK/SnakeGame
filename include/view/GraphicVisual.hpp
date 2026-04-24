@@ -24,6 +24,7 @@ private:
     sf::FloatRect  cellRect(int x, int y)      const;
  
     void drawBackground();
+    void drawDroppedHeads(const Model& model);
     void drawBorder(const Model& model);
     void drawGeckos(const Model& model);
     void drawSnakes(const Model& model);

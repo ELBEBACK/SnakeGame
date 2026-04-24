@@ -36,5 +36,6 @@ private:
     void drawBorder(const Model& model);
     void drawSnake(const Snake& snake);
     void drawGecko(const Gecko& gecko);
+    void drawDroppedHead(const DroppedHead& dh);
     void drawScore(const Model& model);
 };
