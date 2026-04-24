@@ -14,6 +14,19 @@
 ## 🚀 Idea to implement
 
 - [🔴] Dynamic geckos (with shown direction where they go)
-- [🔴] **[Killer-feature] Some geckos that were not yet dissolved in the stomach get free after snake's death**
+- [🔴] *[Optional] Some geckos get free after snake's death*
 
 Progress: [▓▓▓▓▓▓░░░░] 60%
+
+
+---
+
+# 🔪 Killer feature
+
+**The idea of second chance with an opportunity to regain some length of a previous body back.**
+
+After death, the head will be left on the playing arena, whereas the snake will be respawned. The strategic goal of opponents will be to not let the revived snake to the head for certain amount of time.
+Implementation core: exploitation of existing bots' algorithms, by creating around the dropped head N high priority "food" pieces that won't have any physical body on the arena, hence, just guide the bots.
+
+
+---
