@@ -16,4 +16,4 @@
 - [🔴] Dynamic geckos (with shown direction where they go)
 - [🔴] *[Optional] Some geckos get free after snake's death*
 
-Progress: [▓▓▓▓░░░░░░] 40%
+Progress: [▓▓▓▓▓░░░░░] 50%
