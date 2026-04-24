@@ -21,7 +21,7 @@ void Model::rebuild_cells() {
         cells_[{pg.x, pg.y}] = CellType::GECKO;
     }
     for (const auto& dh : dropped_heads_) {
-        cells_[{dh.x, dh.y}] = CellType::GECKO;
+        cells_[{dh.x, dh.y}] = CellType::SNAKE;
     }
 }
 
@@ -83,15 +83,15 @@ void Model::handleGeckoCollision(Snake& snake) {
 void Model::handleDroppedHeadCollisions() {
     for (auto& snake : snakes_) {
         if (snake.getState() != SnakeStatus::ALIVE) continue;
-        const Segment& head = *std::next(snake.getBody().begin(), 1);
+        const Segment& head = snake.getHead();
 
         dropped_heads_.remove_if([&](const DroppedHead& dh) {
             if (dh.x != head.x || dh.y != head.y) return false;
 
-            if (dh.respawn_id == snake.getID()) 
+            if (dh.respawn_id == snake.getID())
                 for (int i = 0; i < dh.original_length / 2; ++i) snake.grow();
 
-            phantom_geckos_.remove_if([&](const PhantomGecko& pg){
+            phantom_geckos_.remove_if([&](const PhantomGecko& pg) {
                 return pg.head_id == dh.owner_id;
             });
             return true;
@@ -100,6 +100,11 @@ void Model::handleDroppedHeadCollisions() {
 }
 
 void Model::dropHead(Snake& snake, std::vector<std::pair<int, ControlledBy>>& respawns) {
+    if (snake.hasSecondLifeUsed()) {
+        snake.kill();
+        return;
+    }
+
     const Segment& head = *std::next(snake.getBody().begin(), 1);
 
     dropped_heads_.push_back({
@@ -110,16 +115,17 @@ void Model::dropHead(Snake& snake, std::vector<std::pair<int, ControlledBy>>& re
         snake.getLength()
     });
 
-    static const int dx[4] = { 0,  0, -2, 1};
-    static const int dy[4] = {-1,  2,  0, 0};
+    static const int ddx[4] = { 0,  0, -1,  1};
+    static const int ddy[4] = {-1,  1,  0,  0};
     for (int i = 0; i < PHANTOM_COUNT; ++i) {
-        int px = head.x + dx[i];
-        int py = head.y + dy[i];
+        int px = head.x + ddx[i];
+        int py = head.y + ddy[i];
         if (px >= minX() && px <= maxX() && py >= minY() && py <= maxY()) {
             phantom_geckos_.push_back({px, py, snake.getID()});
         }
     }
 
+    snake.markSecondLifeUsed();
     snake.kill();
     respawns.push_back({snake.getColor(), snake.getCtrl()});
 }
@@ -141,6 +147,24 @@ void Model::respawnSnake(int color, ControlledBy ctrl) {
             .setColor(color)
             .setBody(Segment(x, y, SegmentType::HEAD))
             .build());
+
+        for (auto& s : snakes_) {
+            if (s.getID() == new_id) { s.markSecondLifeUsed(); break; }
+        }
+
+        if (ctrl == ControlledBy::HUMAN) {
+            human_ids_.erase(
+                std::remove_if(human_ids_.begin(), human_ids_.end(),
+                    [&](int hid) {
+                        if (hid == new_id) return false;
+                        for (const auto& s : snakes_)
+                            if (s.getID() == hid && s.getState() == SnakeStatus::ALIVE)
+                                return false;
+                        return true;
+                    }),
+                human_ids_.end()
+            );
+        }
 
         for (auto& dh : dropped_heads_) {
             if (dh.color == color && dh.respawn_id == -1) {
@@ -222,7 +246,7 @@ Direction Model::bfsSmartBot(const Snake& snake) const {
         CellPoint cur = bfs_queue.front();
         bfs_queue.pop();
 
-        if (getCell(cur.x, cur.y) == CellType::GECKO) {
+        if (getCell(cur.x, cur.y) == CellType::GECKO && !(cur == head_cp)) {
             CellPoint step = cur;
             while (!(parents.at(step) == head_cp)) step = parents.at(step);
             int dx = step.x - head.x;
@@ -255,8 +279,8 @@ Direction Model::greedyEasyBot(const Snake& snake) const {
     Gecko food = nearestGecko(snake);
     if (food.getX() == -1) return cur_dir;
 
-    int   fx       = food.getX(), fy = food.getY();
-    bool  prefer_x = (snake.getBotPhase() % 2 == 0);
+    int  fx      = food.getX(), fy = food.getY();
+    bool prefer_x = (snake.getBotPhase() % 2 == 0);
     Direction desired = cur_dir;
 
     if (prefer_x) {
@@ -345,6 +369,21 @@ void Model::update(const std::vector<Event>& events) {
         }
     }
 
+    {
+        auto now_t = std::chrono::steady_clock::now();
+        dropped_heads_.remove_if([&](const DroppedHead& dh) {
+            auto age = std::chrono::duration_cast<std::chrono::seconds>(
+                           now_t - dh.spawn_time).count();
+            if (age >= DROPPED_HEAD_LIFETIME_S) {
+                phantom_geckos_.remove_if([&](const PhantomGecko& pg) {
+                    return pg.head_id == dh.owner_id;
+                });
+                return true;
+            }
+            return false;
+        });
+    }
+
     handleDroppedHeadCollisions();
 
     for (auto& [color, ctrl] : respawns) respawnSnake(color, ctrl);
@@ -357,7 +396,8 @@ void Model::update(const std::vector<Event>& events) {
     if (snakes_.empty()) { state_ = ModelState::GAME_OVER; return; }
 
     auto now     = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - gecko_timer_).count();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       now - gecko_timer_).count();
     if (elapsed >= SPAWN_INTERVAL_MS) {
         gecko_timer_ = now;
         if (static_cast<int>(geckos_.size()) < MAX_GECKOS) spawnGecko();

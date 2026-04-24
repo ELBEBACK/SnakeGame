@@ -47,7 +47,10 @@ struct DroppedHead {
     int  respawn_id{-1};
     int  color;
     int  original_length;
+    std::chrono::steady_clock::time_point spawn_time{std::chrono::steady_clock::now()};
 };
+
+constexpr int DROPPED_HEAD_LIFETIME_S = 8;
 
 struct PhantomGecko {
     int  x, y;

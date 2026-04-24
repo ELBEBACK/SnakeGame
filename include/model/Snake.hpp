@@ -43,6 +43,7 @@ class Snake {
     Segment            rudimentary_tail_{};  
     bool               should_grow_{false};
     int                bot_phase_{0};
+    bool               second_life_used_{false};
     
 public:
     Snake(ControlledBy ctrl, std::list<Segment> body, Direction dir, int color)
@@ -80,7 +81,8 @@ public:
     void rot()               { state_ = SnakeStatus::ROTTED; }
     void setID(int id)       { id_ = id; }
     void setDirection(Direction d) { direction_ = d; }
-    void incrementBotPhase()     { ++bot_phase_; }
+    void incrementBotPhase()          { ++bot_phase_; }
+    void markSecondLifeUsed()         { second_life_used_ = true; }
 
     
     int                        getID()        const noexcept { return id_; }
@@ -93,7 +95,8 @@ public:
     Segment                    getTail()      const noexcept { return rudimentary_tail_; }
     ControlledBy               getCtrl()      const noexcept { return ctrl_; }
 
-    int  getBotPhase() const noexcept { return bot_phase_; }
+    int  getBotPhase()         const noexcept { return bot_phase_; }
+    bool hasSecondLifeUsed()   const noexcept { return second_life_used_; }
     bool isHuman() const noexcept { return ctrl_ == ControlledBy::HUMAN; }
     bool isBot()   const noexcept { return ctrl_ != ControlledBy::HUMAN; }
 
