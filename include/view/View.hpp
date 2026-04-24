@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/Model.hpp"
+#include "controller/Scoreboard.hpp"
 
 
 
@@ -13,4 +14,7 @@ public:
 
     
     virtual void render(Model& model) = 0;
+
+
+    virtual void showScoreboard(const Scoreboard& scoreboard) = 0;
 };

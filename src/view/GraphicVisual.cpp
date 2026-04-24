@@ -72,16 +72,16 @@ void GraphicVisual::drawBackground() {
 void GraphicVisual::drawBorder(const Model& model) {
     int bx = model.getColBorder();
     int by = model.getRowBorder();
-    int fw = model.getWidth()  - 4 * bx;
-    int fh = model.getHeight() - 4 * by;
+    int fw = model.getWidth()  - 2 * (bx + 1);
+    int fh = model.getHeight() - 2 * (by + 1);
  
     sf::RectangleShape border(
         {static_cast<float>((fw + 2) * cell_),
          static_cast<float>((fh + 2) * cell_)}
     );
     border.setPosition(
-        {static_cast<float>(bx * cell_),
-         static_cast<float>(by * cell_)}
+        {static_cast<float>((bx + 1) * cell_),
+         static_cast<float>((by + 1) * cell_)}
     );
     border.setFillColor(sf::Color::Transparent);
     border.setOutlineColor(sf::Color(80, 160, 80));
@@ -195,5 +195,31 @@ void GraphicVisual::render(Model& model) {
     drawGeckos(model);
     drawSnakes(model);
     drawScore(model);
+    window_.display();
+}
+
+void GraphicVisual::showScoreboard(const Scoreboard& scoreboard) {
+     drawBackground();
+
+    float x = static_cast<float>(cell_);
+    float y = static_cast<float>(cell_);
+
+    sf::Text title(font_, "Scoreboard", static_cast<unsigned>(cell_ * 1.5f));
+    title.setPosition({x, y});
+    title.setFillColor(sf::Color(200, 80, 180));
+    window_.draw(title);
+
+    y += cell_ * 2.f;
+
+    for (const auto& ps : scoreboard) {
+        std::string line = "Player #" + std::to_string(ps.slot)
+                         + " - Total Score: " + std::to_string(ps.total_score);
+        sf::Text text(font_, line, static_cast<unsigned>(cell_));
+        text.setPosition({x, y});
+        text.setFillColor(sf::Color(200, 80, 180));
+        window_.draw(text);
+        y += cell_ * 1.5f;
+    }
+
     window_.display();
 }

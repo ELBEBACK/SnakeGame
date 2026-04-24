@@ -101,6 +101,7 @@ public:
     void setHeight(int h) { height_ = h; }
     void addSnake(Snake snake);
     bool isPositionFree(int x, int y) const;
+    void reset();
 
 private:
     

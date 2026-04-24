@@ -21,6 +21,7 @@ static void print_usage(const char* name) {
               << "  -l / --silly  N   silly bots    (default 1)\n"
               << "  -g / --graphics   use SFML graphics\n"
               << "  -c / --cell   N   cell size in pixels for SFML (default 25)\n"
+              << "  -r / --rounds N   number of rounds to play (default 1)\n"
               << "  -h / --help       print manual             \n";
 }
 
@@ -42,6 +43,7 @@ int main(int argc, const char** argv) {
     int num_silly_bots  = 1;
     bool use_graphics   = false;
     int cell_size       = 25;
+    int rounds          = 1;
 
     static const struct option long_opts[] = {
         {"human",       required_argument, nullptr, 'u'},
@@ -49,18 +51,20 @@ int main(int argc, const char** argv) {
         {"silly",       required_argument, nullptr, 'l'},
         {"graphics",    no_argument,       nullptr, 'g'},
         {"cell",        required_argument, nullptr, 'c'},
+        {"rounds",      required_argument, nullptr, 'r'},
         {"help",        no_argument,       nullptr, 'h'},
         {nullptr,       0,                 nullptr,  0 },
     };
 
     int opt;
-    while ((opt = getopt_long(argc, const_cast<char**>(argv), "u:s:l:gc:h", long_opts, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, const_cast<char**>(argv), "u:s:l:gc:r:h", long_opts, nullptr)) != -1) {
         switch (opt) {
             case 'u': num_humans     = std::atoi(optarg); break;
             case 's': num_smart_bots = std::atoi(optarg); break;
             case 'l': num_silly_bots = std::atoi(optarg); break;
             case 'g': use_graphics   = true;              break;
             case 'c': cell_size      = std::atoi(optarg); break;
+            case 'r': rounds         = std::atoi(optarg); break;
             case 'h': print_manual();       return 0;
             default:  print_usage(argv[0]); return 1;
         }
@@ -90,7 +94,7 @@ int main(int argc, const char** argv) {
 
     try {
         Controller ctrl(*model, *view);
-        ctrl.run(num_silly_bots, num_smart_bots, num_humans);
+        ctrl.run(num_silly_bots, num_smart_bots, num_humans, rounds);
     } catch (const std::exception& e) {
         std::cerr << "Fatal: " << e.what() << "\n";
         return 1;

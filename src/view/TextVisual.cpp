@@ -41,7 +41,7 @@ namespace {
 }
 
 constexpr int BORDER_COLOR          = kBrightGreen;
-constexpr int BORDER_TXT_COLOR      = kBrightMagenta;
+constexpr int BORDER_TXT_COLOR      = kMagenta;
 constexpr int BORDER_TXT_BG_COLOR   = kBGGreen;
 constexpr int GECKO_COLOR           = kBrightMagenta;
 
@@ -320,4 +320,26 @@ Event TextVisual::getEvent(long tick_ms) {
     }
 
     return Event();
+}
+
+void TextVisual::showScoreboard(const Scoreboard& scoreboard) {
+    clearScreen();
+    gotoxy(1, 1);
+    setColor(BORDER_COLOR);
+    buf_ += "╔══════════════════════════════════════╗\n";
+    buf_ += "║            Final Scoreboard          ║\n";
+    buf_ += "╠════════════╦════════════╦════════════╣\n";
+    buf_ += "║Player Slot ║ Name       ║ Total Score║\n";
+    buf_ += "╠════════════╬════════════╬════════════╣\n";
+
+    for (const auto& ps : scoreboard) {
+        buf_ += "║ " + std::to_string(ps.slot) + "          "
+              + "║ " + ps.name + std::string(11 - ps.name.size(), ' ')
+              + "║ " + std::to_string(ps.total_score) + std::string(11 - std::to_string(ps.total_score).size(), ' ')
+              + "║\n";
+    }
+
+    buf_ += "╚════════════╩════════════╩═══════════╝\n";
+    resetColor();
+    std::cout << buf_ << std::flush;
 }

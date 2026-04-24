@@ -22,6 +22,7 @@ public:
 
     Event getEvent(long tick_ms) override;
     void  render(Model& model) override;
+    void showScoreboard(const Scoreboard& scoreboard) override;
 
 private:
     void gotoxy(int x, int y);

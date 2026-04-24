@@ -1,9 +1,11 @@
 #include "controller/Controller.hpp"
+#include "controller/Scoreboard.hpp"
 
 #include <unistd.h>
 #include <chrono>
 #include <iostream>
 #include <optional>
+#include <thread>
 
 
 
@@ -67,32 +69,59 @@ void Controller::spawnSnakes(int num_silly, int num_smart, int num_humans) {
     }
 }
 
-void Controller::run(int num_silly, int num_smart, int num_humans) {
-    spawnSnakes(num_silly, num_smart, num_humans);
+void Controller::run(int num_silly, int num_smart, int num_humans, int rounds) {
+    Scoreboard scoreboard;
+    
+    for (int r = 1; r <= rounds; ++r) {
+        model_.reset();
+        spawnSnakes(num_silly, num_smart, num_humans);
 
-    bool paused = false;
+        bool paused = false;
 
-    while (!model_.isOver()) {
-        auto tick_start = std::chrono::steady_clock::now();
-        long remaining  = static_cast<long>(model_.getTickMs());
+        std::unordered_map<int, int> current_round_score;
 
-        std::vector<Event> events;
+        while (!model_.isOver()) {
+            auto tick_start = std::chrono::steady_clock::now();
+            long remaining  = static_cast<long>(model_.getTickMs());
 
-        while (remaining > 0) {
-            Event e = view_.getEvent(remaining);
+            std::vector<Event> events;
 
-            if (e.type == EventType::HALT)  return;
-            if (e.type == EventType::PAUSE) paused = !paused;
-            if (e.isValid())                events.push_back(e);
+            while (remaining > 0) {
+                Event e = view_.getEvent(remaining);
 
-            remaining = static_cast<long>(model_.getTickMs()) -
-                        std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::steady_clock::now() - tick_start).count();
+                if (e.type == EventType::HALT)  return;
+                if (e.type == EventType::PAUSE) paused = !paused;
+                if (e.isValid())                events.push_back(e);
+
+                remaining = static_cast<long>(model_.getTickMs()) -
+                            std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - tick_start).count();
+            }
+
+            if (!paused) {
+                model_.update(events);
+                view_.render(model_);
+                for (const auto& snake : model_.getSnakes()) {
+                    if (snake.getState() == SnakeStatus::ALIVE) {
+                        current_round_score[snake.getID()] = snake.getLength();
+                    }
+                }
+            }
         }
 
-        if (!paused) {
-            model_.update(events);
+        for (auto& ps : scoreboard) {
+            ps.total_score += current_round_score[ps.slot];
+        }
+
+        view_.showScoreboard(scoreboard);
+
+        auto end = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+        while (std::chrono::steady_clock::now() < end) {
             view_.render(model_);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+            Event e = view_.getEvent(100);
+            if (e.type == EventType::HALT) return;
         }
     }
 }

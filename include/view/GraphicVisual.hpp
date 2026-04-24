@@ -17,7 +17,7 @@ public:
  
     Event getEvent(long tick_ms) override;
     void  render(Model& model)   override;
- 
+    void  showScoreboard(const Scoreboard& scoreboard) override;
 private:
     sf::Color      ansiToColor(int ansi_code)  const;
     sf::Color      brighten(sf::Color c, int amount) const;

@@ -308,3 +308,13 @@ void Model::update(const std::vector<Event>& events) {
         if (static_cast<int>(geckos_.size()) < MAX_GECKOS) spawnGecko();
     }
 }
+
+void Model::reset() {
+    snakes_.clear();
+    geckos_.clear();
+    human_ids_.clear();
+    cells_.clear();
+    state_ = ModelState::RUNNING;
+    next_id_ = 0;
+    gecko_timer_ = std::chrono::steady_clock::now();
+}
