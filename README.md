@@ -5,7 +5,7 @@
 - [🟢] Minimal compiling version for ASCII view and by player control
 - [🟢] Dynamically resizing playing field
 - [🟢] Implementation of "greedy" bot algorithm (Aspids)
-- [🔴] Implementation of "silly" bot algorithm (Boas)
+- [🟢] Implementation of "silly" bot algorithm (Boas)
 - [🟢] Tracement of tail's segments direction (cross-view dependance) & nicer ASCII interface
 - [🟢] Simplest graphic view (SFML)
 - [🔴] Statistics records, tournament like system
@@ -16,4 +16,4 @@
 - [🔴] Dynamic geckos (with shown direction where they go)
 - [🔴] *[Optional] Some geckos get free after snake's death*
 
-Progress: [▓▓▓▓▓░░░░░] 50%
+Progress: [▓▓▓▓▓▓░░░░] 60%
