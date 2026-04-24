@@ -14,6 +14,6 @@
 ## 🚀 Idea to implement
 
 - [🔴] Dynamic geckos (with shown direction where they go)
-- [🔴] *[Optional] Some geckos get free after snake's death*
+- [🔴] **[Killer-feature] Some geckos that were not yet dissolved in the stomach get free after snake's death**
 
 Progress: [▓▓▓▓▓▓░░░░] 60%
